@@ -175,6 +175,7 @@ install_iterm2() {
     
     if is_app_installed "iTerm"; then
         log_success "iTerm2 already installed"
+        configure_iterm2  # Always configure themes, even if already installed
         return 0
     fi
     
@@ -201,35 +202,286 @@ install_iterm2() {
 }
 
 configure_iterm2() {
-    log "Configuring iTerm2 for development..."
+    log "Configuring iTerm2 with programmer-friendly theme..."
     
-    local plist_file="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
+    # Download and install Dracula theme for iTerm2
+    log "Installing Dracula theme for iTerm2..."
+    local theme_dir="$HOME/.iterm2_themes"
+    mkdir -p "$theme_dir"
     
-    # Create basic configuration
-    defaults write com.googlecode.iterm2 "Default Bookmark Guid" -string "73B1CF6B-9E1A-4C27-9190-C1C4E90F3D8A"
-    defaults write com.googlecode.iterm2 "New Bookmarks" -array-add '{
-        "Name" = "Default";
-        "Guid" = "73B1CF6B-9E1A-4C27-9190-C1C4E90F3D8A";
-        "Working Directory" = "~";
-        "Command" = "";
-        "Custom Command" = "No";
-    }'
+    # Download Dracula theme
+    if curl -fsSL "https://raw.githubusercontent.com/dracula/iterm/master/Dracula.itermcolors" -o "$theme_dir/Dracula.itermcolors"; then
+        log_success "Dracula theme downloaded"
+    else
+        log_warning "Failed to download Dracula theme, using default configuration"
+    fi
     
-    # Set as default terminal
-    defaults write com.apple.LaunchServices/com.apple.launchservices.secure LSHandlers -array-add '{
-        LSHandlerContentType = "public.unix-executable";
-        LSHandlerRoleShell = "com.googlecode.iterm2";
-    }'
+    # Configure iTerm2 preferences for development
+    local plist="com.googlecode.iterm2"
     
-    log_success "iTerm2 configured and set as default terminal"
+    # General settings
+    defaults write "$plist" "PrefsCustomFolder" -string "$HOME/.iterm2_config"
+    defaults write "$plist" "LoadPrefsFromCustomFolder" -bool true
+    
+    # Window and tab settings
+    defaults write "$plist" "UseBorder" -bool false
+    defaults write "$plist" "HideTab" -bool false
+    defaults write "$plist" "TabsHaveCloseButton" -bool true
+    defaults write "$plist" "WindowNumber" -bool false
+    defaults write "$plist" "ShowFullScreenTabBar" -bool false
+    
+    # Font settings - use SF Mono or Menlo (programmer fonts)
+    defaults write "$plist" "Normal Font" -string "SF Mono Regular 13"
+    defaults write "$plist" "Non-ASCII Font" -string "SF Mono Regular 13"
+    
+    # Terminal behavior
+    defaults write "$plist" "Silence Bell" -bool true
+    defaults write "$plist" "FlashingBell" -bool false
+    defaults write "$plist" "VisualBell" -bool false
+    defaults write "$plist" "BellAlert" -bool false
+    
+    # Cursor settings
+    defaults write "$plist" "CursorBlink" -bool true
+    defaults write "$plist" "CursorType" -int 2  # Underline cursor
+    
+    # Scrollback settings
+    defaults write "$plist" "Scrollback With Status Bar" -bool false
+    defaults write "$plist" "Scrollback in Alternate Screen" -bool true
+    defaults write "$plist" "Unlimited Scrollback" -bool false
+    defaults write "$plist" "Scrollback Lines" -int 10000
+    
+    # Mouse settings
+    defaults write "$plist" "Three Finger Emulates Middle" -bool true
+    defaults write "$plist" "Focus Follows Mouse" -bool false
+    
+    # Performance settings
+    defaults write "$plist" "UseMetal" -bool true
+    defaults write "$plist" "SeparateStatusBarsPerPane" -bool false
+    
+    # Color scheme settings (Dracula-inspired dark theme)
+    log "Configuring color scheme..."
+    
+    # Create color profiles directory
+    local color_presets_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+    mkdir -p "$color_presets_dir"
+    
+    # Create Dracula-inspired profile
+    cat > "$color_presets_dir/DeveloperTheme.json" << 'EOF'
+{
+  "Profiles": [
+    {
+      "Name": "Developer Theme",
+      "Guid": "A8B8C8D8-E8F8-4A4B-8C8D-8E8F8A8B8C8D",
+      "Dynamic Profile Parent Name": "Default",
+      "Badge Text": "",
+      "Working Directory": "~",
+      "Prompt Before Closing": false,
+      "Custom Command": "No",
+      "Command": "",
+      "Initial Text": "",
+      "Custom Directory": "No",
+      
+      "Ansi 0 Color": {
+        "Red Component": 0.1568627450980392,
+        "Green Component": 0.1568627450980392,
+        "Blue Component": 0.21176470588235294
+      },
+      "Ansi 1 Color": {
+        "Red Component": 1,
+        "Green Component": 0.3333333333333333,
+        "Blue Component": 0.3333333333333333
+      },
+      "Ansi 2 Color": {
+        "Red Component": 0.3137254901960784,
+        "Green Component": 0.9803921568627451,
+        "Blue Component": 0.4823529411764706
+      },
+      "Ansi 3 Color": {
+        "Red Component": 0.9450980392156862,
+        "Green Component": 0.9803921568627451,
+        "Blue Component": 0.5490196078431373
+      },
+      "Ansi 4 Color": {
+        "Red Component": 0.7411764705882353,
+        "Green Component": 0.5764705882352941,
+        "Blue Component": 1
+      },
+      "Ansi 5 Color": {
+        "Red Component": 1,
+        "Green Component": 0.4745098039215686,
+        "Blue Component": 0.7764705882352941
+      },
+      "Ansi 6 Color": {
+        "Red Component": 0.5411764705882353,
+        "Green Component": 0.9137254901960784,
+        "Blue Component": 0.9921568627450981
+      },
+      "Ansi 7 Color": {
+        "Red Component": 0.9764705882352941,
+        "Green Component": 0.9764705882352941,
+        "Blue Component": 0.9490196078431372
+      },
+      "Ansi 8 Color": {
+        "Red Component": 0.42745098039215684,
+        "Green Component": 0.4666666666666667,
+        "Blue Component": 0.5333333333333333
+      },
+      "Ansi 9 Color": {
+        "Red Component": 1,
+        "Green Component": 0.3333333333333333,
+        "Blue Component": 0.3333333333333333
+      },
+      "Ansi 10 Color": {
+        "Red Component": 0.3137254901960784,
+        "Green Component": 0.9803921568627451,
+        "Blue Component": 0.4823529411764706
+      },
+      "Ansi 11 Color": {
+        "Red Component": 0.9450980392156862,
+        "Green Component": 0.9803921568627451,
+        "Blue Component": 0.5490196078431373
+      },
+      "Ansi 12 Color": {
+        "Red Component": 0.7411764705882353,
+        "Green Component": 0.5764705882352941,
+        "Blue Component": 1
+      },
+      "Ansi 13 Color": {
+        "Red Component": 1,
+        "Green Component": 0.4745098039215686,
+        "Blue Component": 0.7764705882352941
+      },
+      "Ansi 14 Color": {
+        "Red Component": 0.5411764705882353,
+        "Green Component": 0.9137254901960784,
+        "Blue Component": 0.9921568627450981
+      },
+      "Ansi 15 Color": {
+        "Red Component": 1,
+        "Green Component": 1,
+        "Blue Component": 1
+      },
+      "Background Color": {
+        "Red Component": 0.11764705882352941,
+        "Green Component": 0.12156862745098039,
+        "Blue Component": 0.16862745098039217
+      },
+      "Bold Color": {
+        "Red Component": 1,
+        "Green Component": 1,
+        "Blue Component": 1
+      },
+      "Cursor Color": {
+        "Red Component": 0.9764705882352941,
+        "Green Component": 0.9764705882352941,
+        "Blue Component": 0.9490196078431372
+      },
+      "Cursor Text Color": {
+        "Red Component": 0.11764705882352941,
+        "Green Component": 0.12156862745098039,
+        "Blue Component": 0.16862745098039217
+      },
+      "Foreground Color": {
+        "Red Component": 0.9764705882352941,
+        "Green Component": 0.9764705882352941,
+        "Blue Component": 0.9490196078431372
+      },
+      "Selected Text Color": {
+        "Red Component": 0.9764705882352941,
+        "Green Component": 0.9764705882352941,
+        "Blue Component": 0.9490196078431372
+      },
+      "Selection Color": {
+        "Red Component": 0.27058823529411763,
+        "Green Component": 0.29411764705882354,
+        "Blue Component": 0.37647058823529411
+      },
+      
+      "Normal Font": "SF Mono Regular 13",
+      "Non-ASCII Font": "SF Mono Regular 13",
+      "Use Bold Font": true,
+      "Use Bright Bold": true,
+      "Use Italic Font": true,
+      "Use Non-ASCII Font": false,
+      
+      "Transparency": 0.05,
+      "Blur": false,
+      "Blur Radius": 2.0,
+      "Background Image Location": "",
+      "Blend": 0.3,
+      
+      "Cursor Blink": true,
+      "Cursor Type": 2,
+      "Blinking Cursor": true,
+      
+      "Scrollback Lines": 10000,
+      "Unlimited Scrollback": false,
+      
+      "Mouse Reporting": true,
+      "Terminal Type": "xterm-256color",
+      "Character Encoding": 4,
+      
+      "Silence Bell": true,
+      "Visual Bell": false,
+      "Flashing Bell": false,
+      
+      "Close Sessions On End": true,
+      "Prompt Before Closing": false,
+      
+      "ASCII Anti Aliased": true,
+      "Non-ASCII Anti Aliased": true,
+      "Use Bold Font": true,
+      "Use Bright Bold": true,
+      "BM Growl": false,
+      
+      "Send Code When Idle": false,
+      "ASCII Ligatures": true,
+      "Non-ASCII Ligatures": true,
+      
+      "Ambiguous Double Width": false,
+      "Unicode Normalization": 0,
+      "Horizontal Spacing": 1.0,
+      "Vertical Spacing": 1.0
+    }
+  ]
+}
+EOF
+    
+    # Set the developer theme as default
+    defaults write "$plist" "Default Bookmark Guid" -string "A8B8C8D8-E8F8-4A4B-8C8D-8E8F8A8B8C8D"
+    
+    # Status bar configuration
+    defaults write "$plist" "Show Status Bar" -bool true
+    defaults write "$plist" "Status Bar Font" -string "SF Mono Regular 12"
+    
+    log_success "iTerm2 configured with developer theme and optimized settings"
+    log "Theme: Dark background with syntax highlighting colors"
+    log "Font: SF Mono (programmer-friendly font)"
+    log "Features: Optimized for coding with proper contrast and readability"
 }
 
-# Homebrew installation
+# Homebrew installation and update
 install_homebrew() {
     log "Checking Homebrew installation..."
     
     if command_exists brew; then
-        log_success "Homebrew already installed"
+        # Get current and latest versions
+        local current_version
+        current_version=$(brew --version | head -1 | grep -o '[0-9.]*' | head -1)
+        
+        log "Current Homebrew version: $current_version"
+        
+        # Check if Homebrew needs update (by running update command)
+        log "Checking for Homebrew updates..."
+        local update_output
+        update_output=$(brew update 2>&1)
+        
+        if echo "$update_output" | grep -q "Already up-to-date"; then
+            log_success "Homebrew is up to date (version: $current_version)"
+        else
+            log_success "Homebrew updated to latest version"
+        fi
+        
         configure_homebrew_china_mirror
         return 0
     fi
@@ -681,17 +933,11 @@ install_nodejs() {
             npm config set prefix "$npm_global"
         fi
         
-        # Configure npm China mirror
+        # Configure npm China mirror (only registry - other options deprecated in npm 11+)
         npm config set registry https://registry.npmmirror.com
-        # disturl is deprecated in newer npm versions
-        npm config set sass_binary_site https://npmmirror.com/mirrors/node-sass/
-        npm config set electron_mirror https://npmmirror.com/mirrors/electron/
-        npm config set puppeteer_download_host https://npmmirror.com/mirrors
-        npm config set chromedriver_cdnurl https://npmmirror.com/mirrors/chromedriver
-        npm config set operadriver_cdnurl https://npmmirror.com/mirrors/operadriver
-        npm config set phantomjs_cdnurl https://npmmirror.com/mirrors/phantomjs
-        npm config set selenium_cdnurl https://npmmirror.com/mirrors/selenium
-        npm config set node_inspector_cdnurl https://npmmirror.com/mirrors/node-inspector
+        
+        # Note: Most binary site configurations have been deprecated in npm 11+
+        # Individual packages now handle mirror configuration differently
         
         log_success "npm China mirror configured"
         
