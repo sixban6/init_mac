@@ -6,6 +6,9 @@
 
 set -euo pipefail
 
+# Ensure Homebrew is in PATH from the start (common installation paths)
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+
 # Determine script directory and log file location
 SCRIPT_DIR_TEMP="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
 # Ensure log file is writable - use /tmp if current directory is not writable
