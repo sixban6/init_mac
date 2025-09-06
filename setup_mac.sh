@@ -7,13 +7,13 @@
 set -euo pipefail
 
 # Determine script directory and log file location
-SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
-# Ensure log file is writable - use /tmp if SCRIPT_DIR is not writable
-if [[ ! -w "$SCRIPT_DIR" ]]; then
-    SCRIPT_DIR="/tmp"
+SCRIPT_DIR_TEMP="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
+# Ensure log file is writable - use /tmp if current directory is not writable
+if [[ ! -w "$SCRIPT_DIR_TEMP" ]]; then
+    SCRIPT_DIR_TEMP="/tmp"
 fi
-readonly SCRIPT_DIR
-readonly LOG_FILE="$SCRIPT_DIR/setup.log"
+readonly SCRIPT_DIR="$SCRIPT_DIR_TEMP"
+readonly LOG_FILE="$SCRIPT_DIR/macOS_setup_$(date +%Y%m%d_%H%M%S).log"
 
 # Colors for output
 readonly RED='\033[0;31m'
@@ -128,7 +128,13 @@ install_homebrew() {
     export HOMEBREW_CORE_GIT_REMOTE="https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
     
-    /bin/bash -c "$(curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/git/homebrew-install/HEAD/install.sh)"
+    # Try China mirror first, fallback to official if fails
+    if ! /bin/bash -c "$(curl -fsSL https://gitee.com/cunkai/HomebrewCN/raw/master/Homebrew.sh)"; then
+        log_warning "China mirror failed, trying official Homebrew installation..."
+        export HOMEBREW_BREW_GIT_REMOTE=""
+        export HOMEBREW_CORE_GIT_REMOTE=""
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    fi
     
     log_success "Homebrew installed successfully"
     configure_homebrew_china_mirror
@@ -137,12 +143,21 @@ install_homebrew() {
 configure_homebrew_china_mirror() {
     log "Configuring Homebrew China mirrors..."
     
-    # Set China mirrors
-    cd "$(brew --repo)"
-    git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git
-    
-    cd "$(brew --repo)/Library/Taps/homebrew/homebrew-core"
-    git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git
+    # Set China mirrors if brew is available
+    if command_exists brew; then
+        # Configure brew repo
+        local brew_repo
+        brew_repo=$(brew --repo 2>/dev/null)
+        if [[ -n "$brew_repo" && -d "$brew_repo" ]]; then
+            (cd "$brew_repo" && git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git 2>/dev/null) || true
+        fi
+        
+        # Configure homebrew-core repo
+        local core_repo="$(brew --repo)/Library/Taps/homebrew/homebrew-core"
+        if [[ -d "$core_repo" ]]; then
+            (cd "$core_repo" && git remote set-url origin https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/homebrew-core.git 2>/dev/null) || true
+        fi
+    fi
     
     # Add environment variables to shell profile
     local shell_profile=""
@@ -155,6 +170,8 @@ configure_homebrew_china_mirror() {
     if ! grep -q "HOMEBREW_BOTTLE_DOMAIN" "$shell_profile" 2>/dev/null; then
         cat >> "$shell_profile" << 'EOF'
 
+# Homebrew Environment
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # Homebrew China Mirror
 export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles
 export HOMEBREW_BREW_GIT_REMOTE=https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/brew.git
@@ -163,8 +180,14 @@ EOF
         log_success "Homebrew China mirror configuration added to $shell_profile"
     fi
     
+    # Set current session PATH for Homebrew
+    export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
     export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles
-    brew update
+    
+    # Update Homebrew if available
+    if command_exists brew; then
+        brew update || log_warning "Homebrew update failed, but continuing..."
+    fi
     
     log_success "Homebrew China mirrors configured"
 }
@@ -185,7 +208,7 @@ install_git() {
     
     # Get latest Homebrew Git version
     if command_exists brew; then
-        brew_git_version=$(brew info git 2>/dev/null | grep -E '^git: ' | head -1 | cut -d' ' -f2 || echo "unknown")
+        brew_git_version=$(brew info git 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         log "Latest Homebrew Git version: $brew_git_version"
         
         # Force upgrade if Homebrew version is newer or if system Git doesn't exist
@@ -260,7 +283,7 @@ install_go() {
         local current_version
         current_version=$(go version | cut -d' ' -f3 | sed 's/go//')
         local latest_version
-        latest_version=$(brew info go | grep -E '^go: ' | cut -d' ' -f2)
+        latest_version=$(brew info go 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         
         if version_ge "$current_version" "$latest_version"; then
             log_success "Go is up to date (version: $current_version)"
@@ -314,7 +337,7 @@ install_python() {
         local current_version
         current_version=$(python3 --version | cut -d' ' -f2)
         local latest_version
-        latest_version=$(brew info python@3 | grep -E '^python@3' | head -1 | cut -d' ' -f2)
+        latest_version=$(brew info python@3 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         
         if version_ge "$current_version" "${latest_version#*@}"; then
             log_success "Python is up to date (version: $current_version)"
@@ -377,7 +400,7 @@ install_java() {
         local current_version
         current_version=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1-2)
         local latest_version
-        latest_version=$(brew info zulu | grep -E '^zulu' | head -1 | cut -d' ' -f2 | cut -d'.' -f1-2)
+        latest_version=$(brew info zulu 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 | cut -d'.' -f1-2 || echo "unknown")
         
         if version_ge "$current_version" "$latest_version"; then
             log_success "Java JDK is up to date (version: $current_version)"
@@ -436,7 +459,7 @@ install_rust() {
         local current_version
         current_version=$(rustc --version | cut -d' ' -f2)
         local latest_version
-        latest_version=$(brew info rust | grep -E '^rust: ' | head -1 | cut -d' ' -f2)
+        latest_version=$(brew info rust 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         
         if version_ge "$current_version" "$latest_version"; then
             log_success "Rust is up to date (version: $current_version)"
@@ -508,7 +531,7 @@ install_nodejs() {
         local current_version
         current_version=$(node --version | sed 's/v//')
         local latest_version
-        latest_version=$(brew info node | grep -E '^node: ' | head -1 | cut -d' ' -f2)
+        latest_version=$(brew info node 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         
         if version_ge "$current_version" "$latest_version"; then
             log_success "Node.js is up to date (version: v$current_version)"
@@ -580,7 +603,7 @@ install_singbox() {
         local current_version
         current_version=$(sing-box version 2>/dev/null | head -1 | cut -d' ' -f3 2>/dev/null || echo "unknown")
         local latest_version
-        latest_version=$(brew info sing-box | grep -E '^sing-box: ' | head -1 | cut -d' ' -f2 2>/dev/null || echo "unknown")
+        latest_version=$(brew info sing-box 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 || echo "unknown")
         
         if [[ "$current_version" != "unknown" ]] && [[ "$latest_version" != "unknown" ]] && version_ge "$current_version" "$latest_version"; then
             log_success "sing-box is up to date (version: $current_version)"
@@ -730,6 +753,60 @@ main() {
     log "• Node.js: $(command_exists node && echo "✓ Installed ($(node --version))" || echo "✗ Not installed")"
     log "• sing-box: $(command_exists sing-box && echo "✓ Installed" || echo "✗ Not installed")"
     log "• VS Code: $(is_app_installed "Visual Studio Code" && echo "✓ Installed" || echo "✗ Not installed")"
+    
+    # Display configuration files and sources summary
+    echo
+    log "📋 Configuration Files and Sources Summary:"
+    echo
+    
+    # Determine shell profile
+    local shell_profile=""
+    case "$SHELL" in
+        */zsh) shell_profile="$HOME/.zshrc" ;;
+        */bash) shell_profile="$HOME/.bash_profile" ;;
+        *) shell_profile="$HOME/.profile" ;;
+    esac
+    
+    log "🔧 Shell Profile: $shell_profile"
+    log "   - Homebrew environment variables"
+    log "   - Git PATH configuration"
+    log "   - Go environment (GOPATH, GOPROXY)"
+    log "   - Python aliases"
+    log "   - Java environment (JAVA_HOME)"
+    log "   - Rust environment (CARGO_HOME)"
+    log "   - Node.js npm configuration"
+    echo
+    
+    log "🌐 China Mirror Sources Configured:"
+    log "   📦 Homebrew: https://mirrors.tuna.tsinghua.edu.cn"
+    log "   🐹 Go Proxy: https://goproxy.cn,direct"
+    log "   🐍 pip: https://pypi.tuna.tsinghua.edu.cn/simple"
+    log "   🦀 Cargo: https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+    log "   📦 npm: https://registry.npmmirror.com"
+    echo
+    
+    log "📁 Configuration Files Created/Modified:"
+    [[ -f "$shell_profile" ]] && log "   ✓ $shell_profile"
+    [[ -f "$HOME/.pip/pip.conf" ]] && log "   ✓ $HOME/.pip/pip.conf"
+    [[ -f "$HOME/.cargo/config" ]] && log "   ✓ $HOME/.cargo/config"
+    [[ -f "$HOME/.config/sing-box/config.json" ]] && log "   ✓ $HOME/.config/sing-box/config.json"
+    [[ -d "$HOME/go" ]] && log "   ✓ $HOME/go/ (Go workspace)"
+    [[ -d "$HOME/.npm-global" ]] && log "   ✓ $HOME/.npm-global/ (npm global packages)"
+    echo
+    
+    log "🛠️  Git Global Configuration:"
+    log "   - Performance optimizations for China network"
+    log "   - Buffer sizes: postBuffer=1GB, maxRequestBuffer=100M"
+    log "   - Cache optimizations: preloadindex, fscache"
+    echo
+    
+    log "💡 Next Steps:"
+    log "   1. Restart your terminal or run: source $shell_profile"
+    log "   2. Verify installations with: ./test_setup.sh"
+    log "   3. Check configuration files listed above for customization"
+    echo
+    
+    log_success "🎉 All development tools installed and configured with China mirrors!"
 }
 
 # Run main function

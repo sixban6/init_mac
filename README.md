@@ -32,9 +32,10 @@ curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh 
 ```
 
 **重要提示**: 
-- 请不要使用 `sudo` 运行此脚本
-- Homebrew 需要在普通用户权限下安装和运行
-- 脚本会在需要管理员权限时提示您输入密码
+- ❌ 请不要使用 `sudo` 运行此脚本
+- ✅ Homebrew 需要在普通用户权限下安装和运行
+- ✅ 脚本会在需要管理员权限时提示您输入密码
+- 📋 完成后会显示详细的配置文件总结
 
 ### 测试安装
 
