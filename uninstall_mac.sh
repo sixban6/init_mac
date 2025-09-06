@@ -257,8 +257,8 @@ show_status() {
     log "• iTerm2: $(is_app_installed "iTerm" && echo "✅ Kept" || echo "❌ Not installed")"
     log "• Git: $(command_exists git && echo "✅ Kept ($(git --version | cut -d' ' -f3))" || echo "❌ Not installed")"
     log "• Go: $(command_exists go && echo "✅ Kept ($(go version | cut -d' ' -f3))" || echo "❌ Not installed")"
+    log "• Python: $(command_exists python3 && echo "✅ Kept ($(python3 --version))" || echo "❌ Not installed")"
     echo "=================================================="
-    log "• Python: $(command_exists python3 && echo "⚠️  Homebrew Python kept (dependencies)" || echo "✅ Removed")"
     log "• Java: $(command_exists java && echo "❌ Still installed" || echo "✅ Removed")"
     log "• Rust: $(command_exists rustc && echo "❌ Still installed" || echo "✅ Removed")"
     log "• Node.js: $(command_exists node && echo "❌ Still installed" || echo "✅ Removed")"
@@ -270,8 +270,8 @@ show_status() {
 # Main execution
 main() {
     log "Starting macOS development environment uninstall..."
-    echo "This will remove: Python config, Java, Rust, Node.js, sing-box, VS Code"
-    echo "This will keep: Homebrew, iTerm2, Git, Go"
+    echo "This will remove: Java, Rust, Node.js, sing-box, VS Code"
+    echo "This will keep: Homebrew, iTerm2, Git, Go, Python"
     echo ""
     
     read -p "Continue with uninstallation? (y/N): " -r
@@ -286,7 +286,7 @@ main() {
     uninstall_nodejs
     uninstall_rust
     uninstall_java
-    uninstall_python
+    # uninstall_python  # Keep Python - it's too important for development
     
     # Cleanup
     cleanup_homebrew
