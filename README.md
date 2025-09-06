@@ -28,8 +28,13 @@ chmod +x setup_mac.sh
 ./setup_mac.sh
 
 # 方法2: 直接运行
-curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh | bash
 ```
+
+**重要提示**: 
+- 请不要使用 `sudo` 运行此脚本
+- Homebrew 需要在普通用户权限下安装和运行
+- 脚本会在需要管理员权限时提示您输入密码
 
 ### 测试安装
 

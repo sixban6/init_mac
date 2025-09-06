@@ -6,7 +6,13 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
+# Determine script directory and log file location
+SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
+# Ensure log file is writable - use /tmp if SCRIPT_DIR is not writable
+if [[ ! -w "$SCRIPT_DIR" ]]; then
+    SCRIPT_DIR="/tmp"
+fi
+readonly SCRIPT_DIR
 readonly LOG_FILE="$SCRIPT_DIR/setup.log"
 
 # Colors for output
@@ -16,21 +22,29 @@ readonly YELLOW='\033[1;33m'
 readonly BLUE='\033[0;34m'
 readonly NC='\033[0m' # No Color
 
-# Logging functions
+# Logging functions with fallback for permission issues
 log() {
-    echo -e "${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')] $*${NC}" | tee -a "$LOG_FILE"
+    local message="${BLUE}[$(date +'%Y-%m-%d %H:%M:%S')] $*${NC}"
+    echo -e "$message"
+    echo -e "$message" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 log_success() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] ✓ $*${NC}" | tee -a "$LOG_FILE"
+    local message="${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] ✓ $*${NC}"
+    echo -e "$message"
+    echo -e "$message" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 log_warning() {
-    echo -e "${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] ⚠ $*${NC}" | tee -a "$LOG_FILE"
+    local message="${YELLOW}[$(date +'%Y-%m-%d %H:%M:%S')] ⚠ $*${NC}"
+    echo -e "$message"
+    echo -e "$message" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 log_error() {
-    echo -e "${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ✗ $*${NC}" | tee -a "$LOG_FILE"
+    local message="${RED}[$(date +'%Y-%m-%d %H:%M:%S')] ✗ $*${NC}"
+    echo -e "$message"
+    echo -e "$message" >> "$LOG_FILE" 2>/dev/null || true
 }
 
 # Utility functions
