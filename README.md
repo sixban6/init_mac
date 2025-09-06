@@ -22,9 +22,13 @@
 ### 快速开始
 
 ```bash
-# 添加执行权限并运行
+# 方法1: 下载后运行（推荐）
+curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh -o setup_mac.sh
 chmod +x setup_mac.sh
 ./setup_mac.sh
+
+# 方法2: 直接运行
+curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh | sudo bash
 ```
 
 ### 测试安装

@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "$HOME")}"
 readonly LOG_FILE="$SCRIPT_DIR/setup.log"
 
 # Colors for output
@@ -165,13 +165,13 @@ install_git() {
     
     # Check system Git version
     if command_exists git; then
-        system_git_version=$(git --version | cut -d' ' -f3)
+        system_git_version=$(git --version 2>/dev/null | cut -d' ' -f3 || echo "unknown")
         log "System Git version: $system_git_version"
     fi
     
     # Get latest Homebrew Git version
     if command_exists brew; then
-        brew_git_version=$(brew info git | grep -E '^git: ' | head -1 | cut -d' ' -f2)
+        brew_git_version=$(brew info git 2>/dev/null | grep -E '^git: ' | head -1 | cut -d' ' -f2 || echo "unknown")
         log "Latest Homebrew Git version: $brew_git_version"
         
         # Force upgrade if Homebrew version is newer or if system Git doesn't exist
@@ -236,6 +236,7 @@ configure_git_china_mirrors() {
     # git config --global url."https://mirror.ghproxy.com/https://github.com/".insteadOf "https://github.com/"
     
     log_success "Git performance settings configured for China network"
+}
 
 # Go installation and configuration
 install_go() {
@@ -670,6 +671,13 @@ main() {
     # Check if running on macOS
     if [[ "$OSTYPE" != "darwin"* ]]; then
         log_error "This script is designed for macOS only"
+        exit 1
+    fi
+    
+    # Check if running as root (not recommended for Homebrew)
+    if [[ $EUID -eq 0 ]]; then
+        log_warning "Running as root is not recommended for Homebrew installations"
+        log "Please run this script as a regular user, not with sudo"
         exit 1
     fi
     
