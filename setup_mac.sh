@@ -56,6 +56,65 @@ is_app_installed() {
     [ -d "/Applications/$1.app" ]
 }
 
+# Reload shell profile to apply environment changes immediately
+reload_shell_profile() {
+    local shell_profile=""
+    case "$SHELL" in
+        */zsh) shell_profile="$HOME/.zshrc" ;;
+        */bash) shell_profile="$HOME/.bash_profile" ;;
+        *) shell_profile="$HOME/.profile" ;;
+    esac
+    
+    if [[ -f "$shell_profile" ]]; then
+        source "$shell_profile" 2>/dev/null || true
+        log "Shell profile reloaded: $shell_profile"
+    fi
+}
+
+# Retry command with exponential backoff (max 3 attempts)
+retry_command() {
+    local command_name="$1"
+    shift
+    local attempts=0
+    local max_attempts=3
+    local delay=2
+    
+    while [ $attempts -lt $max_attempts ]; do
+        attempts=$((attempts + 1))
+        log "Attempting $command_name (try $attempts/$max_attempts)..."
+        
+        if "$@"; then
+            log_success "$command_name completed successfully"
+            return 0
+        else
+            local exit_code=$?
+            if [ $attempts -eq $max_attempts ]; then
+                log_error "$command_name failed after $max_attempts attempts"
+                return $exit_code
+            else
+                log_warning "$command_name failed (attempt $attempts/$max_attempts), retrying in ${delay}s..."
+                sleep $delay
+                delay=$((delay * 2))  # Exponential backoff
+            fi
+        fi
+    done
+}
+
+# Safe execution - don't exit on failure, just log and continue
+safe_install() {
+    local function_name="$1"
+    local software_name="$2"
+    
+    log "Installing $software_name..."
+    if "$function_name"; then
+        log_success "$software_name installation completed"
+        return 0
+    else
+        log_error "$software_name installation failed, but continuing with other software..."
+        return 1
+    fi
+}
+
 version_ge() {
     # Handle unknown versions
     if [[ "$1" == "unknown" ]] || [[ "$2" == "unknown" ]]; then
@@ -209,11 +268,11 @@ configure_iterm2() {
     local theme_dir="$HOME/.iterm2_themes"
     mkdir -p "$theme_dir"
     
-    # Download Dracula theme
-    if curl -fsSL "https://raw.githubusercontent.com/dracula/iterm/master/Dracula.itermcolors" -o "$theme_dir/Dracula.itermcolors"; then
+    # Download Dracula theme with retry
+    if retry_command "Dracula theme download" curl -fsSL "https://raw.githubusercontent.com/dracula/iterm/master/Dracula.itermcolors" -o "$theme_dir/Dracula.itermcolors"; then
         log_success "Dracula theme downloaded"
     else
-        log_warning "Failed to download Dracula theme, using default configuration"
+        log_warning "Failed to download Dracula theme after retries, using default configuration"
     fi
     
     # Configure iTerm2 preferences for development
@@ -582,7 +641,7 @@ install_git() {
         verify_homebrew_package "git" || log_warning "Git package verification skipped"
         
         # Install Git via Homebrew (this will be the latest version)
-        brew install git
+        retry_command "Git installation" brew install git
         
         # Configure shell to use Homebrew Git first
         local shell_profile=""
@@ -656,7 +715,7 @@ install_go() {
     # Verify Go package integrity before installation
     verify_homebrew_package "go" || log_warning "Go package verification skipped"
     
-    brew install go
+    retry_command "Go installation" brew install go
     
     # Configure Go environment
     local shell_profile=""
@@ -677,6 +736,8 @@ export GOPROXY=https://goproxy.cn,direct
 export GOSUMDB=sum.golang.google.cn
 EOF
         log_success "Go environment configuration added to $shell_profile"
+        # Reload profile to apply changes immediately
+        reload_shell_profile
     fi
     
     # Set current session environment
@@ -714,7 +775,7 @@ install_python() {
     # Verify Python package integrity before installation
     verify_homebrew_package "python@3" || log_warning "Python package verification skipped"
     
-    brew install python@3
+    retry_command "Python installation" brew install python@3
     
     # Ensure python3 and pip3 are in PATH
     local shell_profile=""
@@ -793,7 +854,7 @@ install_java() {
     log "Installing/updating OpenJDK..."
     
     # Install OpenJDK from Homebrew main repository
-    brew install openjdk
+    retry_command "OpenJDK installation" brew install openjdk
     
     configure_java_environment
     
@@ -821,6 +882,8 @@ export JAVA_HOME=$java_home
 export PATH=\$JAVA_HOME/bin:\$PATH
 EOF
         log_success "Java environment configuration added to $shell_profile"
+        # Source the profile to apply changes immediately
+        source "$shell_profile" 2>/dev/null || true
     elif [[ -n "$java_home" ]]; then
         log_success "Java environment already configured in $shell_profile"
     else
@@ -857,7 +920,7 @@ install_rust() {
     # Verify Rust package integrity before installation
     verify_homebrew_package "rust" || log_warning "Rust package verification skipped"
     
-    brew install rust
+    retry_command "Rust installation" brew install rust
     
     # Configure Rust environment
     local shell_profile=""
@@ -933,7 +996,7 @@ install_nodejs() {
     # Verify Node.js package integrity before installation
     verify_homebrew_package "node" || log_warning "Node.js package verification skipped"
     
-    brew install node
+    retry_command "Node.js installation" brew install node
     
     # Verify npm is also available
     if command_exists npm; then
@@ -1005,7 +1068,7 @@ install_singbox() {
         brew tap sagernet/sing-box
     fi
     
-    brew install sing-box
+    retry_command "sing-box installation" brew install sing-box
     
     # Create configuration directory if it doesn't exist
     local config_dir="$HOME/.config/sing-box"
@@ -1061,7 +1124,7 @@ install_vscode() {
     fi
     
     log "Installing VS Code..."
-    brew install --cask visual-studio-code
+    retry_command "VS Code installation" brew install --cask visual-studio-code
     
     # Create 'code' command in PATH if not exists
     if ! command_exists code; then
@@ -1111,16 +1174,17 @@ main() {
         exit 0
     fi
     
-    install_iterm2
-    install_homebrew
-    install_git
-    install_go
-    install_python
-    install_java
-    install_rust
-    install_nodejs
-    install_singbox
-    install_vscode
+    # Use safe execution to prevent single failures from stopping the entire process
+    safe_install install_iterm2 "iTerm2"
+    safe_install install_homebrew "Homebrew"
+    safe_install install_git "Git"
+    safe_install install_go "Go"
+    safe_install install_python "Python"
+    safe_install install_java "Java (OpenJDK)"
+    safe_install install_rust "Rust"
+    safe_install install_nodejs "Node.js"
+    safe_install install_singbox "sing-box"
+    safe_install install_vscode "VS Code"
     
     log_success "All installations completed successfully!"
     log "Please restart your terminal or run 'source ~/.zshrc' (or your shell profile) to apply environment changes."
