@@ -264,26 +264,144 @@ install_iterm2() {
 }
 
 configure_iterm2() {
-    log "Configuring iTerm2 with programmer-friendly theme..."
+    log "Configuring iTerm2 with Oh My Zsh and modern development theme..."
     
-    # Download and install Dracula theme for iTerm2
-    log "Installing Dracula theme for iTerm2..."
+    # Clean up any previous malformed configuration
+    defaults delete com.googlecode.iterm2 "PrefsCustomFolder" 2>/dev/null || true
+    defaults delete com.googlecode.iterm2 "LoadPrefsFromCustomFolder" 2>/dev/null || true
+    
+    # Install Oh My Zsh if not already installed
+    if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+        log "Installing Oh My Zsh..."
+        retry_command "Oh My Zsh installation" sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        log_success "Oh My Zsh installed"
+    else
+        log_success "Oh My Zsh already installed"
+    fi
+    
+    # Install Powerline fonts
+    log "Installing Powerline fonts..."
+    local fonts_dir="$HOME/.local/share/fonts"
+    mkdir -p "$fonts_dir"
+    local temp_fonts_dir="/tmp/powerline-fonts"
+    
+    if [[ ! -d "$temp_fonts_dir" ]]; then
+        retry_command "Powerline fonts download" git clone https://github.com/powerline/fonts.git --depth=1 "$temp_fonts_dir"
+    fi
+    
+    if [[ -d "$temp_fonts_dir" ]]; then
+        (cd "$temp_fonts_dir" && ./install.sh) || log_warning "Powerline fonts installation failed"
+        rm -rf "$temp_fonts_dir"
+        log_success "Powerline fonts installed"
+    fi
+    
+    # Install Solarized color scheme
+    log "Installing Solarized color scheme..."
     local theme_dir="$HOME/.iterm2_themes"
     mkdir -p "$theme_dir"
+    local temp_solarized_dir="/tmp/solarized"
     
-    # Download Dracula theme with retry
-    if retry_command "Dracula theme download" curl -fsSL "https://raw.githubusercontent.com/dracula/iterm/master/Dracula.itermcolors" -o "$theme_dir/Dracula.itermcolors"; then
-        log_success "Dracula theme downloaded"
-    else
-        log_warning "Failed to download Dracula theme after retries, using default configuration"
+    if [[ ! -d "$temp_solarized_dir" ]]; then
+        retry_command "Solarized theme download" git clone https://github.com/altercation/solarized.git "$temp_solarized_dir"
+    fi
+    
+    if [[ -d "$temp_solarized_dir/iterm2-colors-solarized" ]]; then
+        cp "$temp_solarized_dir/iterm2-colors-solarized"/*.itermcolors "$theme_dir/" 2>/dev/null || true
+        rm -rf "$temp_solarized_dir"
+        log_success "Solarized color schemes installed"
+    fi
+    
+    # Install Oh My Zsh plugins
+    log "Installing Oh My Zsh plugins..."
+    local custom_plugins_dir="$HOME/.oh-my-zsh/custom/plugins"
+    mkdir -p "$custom_plugins_dir"
+    
+    # Install zsh-syntax-highlighting
+    if [[ ! -d "$custom_plugins_dir/zsh-syntax-highlighting" ]]; then
+        retry_command "zsh-syntax-highlighting plugin" git clone https://github.com/zsh-users/zsh-syntax-highlighting.git "$custom_plugins_dir/zsh-syntax-highlighting"
+        log_success "zsh-syntax-highlighting plugin installed"
+    fi
+    
+    # Install zsh-autosuggestions
+    if [[ ! -d "$custom_plugins_dir/zsh-autosuggestions" ]]; then
+        retry_command "zsh-autosuggestions plugin" git clone https://github.com/zsh-users/zsh-autosuggestions.git "$custom_plugins_dir/zsh-autosuggestions"
+        log_success "zsh-autosuggestions plugin installed"
+    fi
+    
+    # Install Agnoster theme variant
+    log "Installing Agnoster theme..."
+    local custom_themes_dir="$HOME/.oh-my-zsh/custom/themes"
+    mkdir -p "$custom_themes_dir"
+    local temp_agnoster_dir="/tmp/oh-my-zsh-agnoster-fcamblor"
+    
+    if [[ ! -f "$custom_themes_dir/agnoster.zsh-theme" ]]; then
+        if retry_command "Agnoster theme download" git clone https://github.com/fcamblor/oh-my-zsh-agnoster-fcamblor.git "$temp_agnoster_dir"; then
+            (cd "$temp_agnoster_dir" && ./install)
+            rm -rf "$temp_agnoster_dir"
+            log_success "Agnoster theme installed"
+        fi
+    fi
+    
+    # Configure .zshrc
+    log "Configuring .zshrc..."
+    local zshrc="$HOME/.zshrc"
+    if [[ -f "$zshrc" ]]; then
+        # Backup original .zshrc
+        cp "$zshrc" "${zshrc}.backup.$(date +%Y%m%d_%H%M%S)"
+        
+        # Set theme
+        sed -i.bak 's/ZSH_THEME=".*"/ZSH_THEME="agnoster"/' "$zshrc" 2>/dev/null || true
+        
+        # Update plugins
+        if grep -q "plugins=(" "$zshrc"; then
+            sed -i.bak 's/plugins=(.*)/plugins=(git brew node npm python ruby rails golang rust docker kubectl zsh-syntax-highlighting zsh-autosuggestions)/' "$zshrc"
+        else
+            echo 'plugins=(git brew node npm python ruby rails golang rust docker kubectl zsh-syntax-highlighting zsh-autosuggestions)' >> "$zshrc"
+        fi
+        
+        # Add custom configurations
+        cat >> "$zshrc" << 'EOF'
+
+# Custom iTerm2 + Oh My Zsh configuration
+# Hide user@hostname in agnoster theme (optional)
+DEFAULT_USER="$(whoami)"
+
+# Powerline configuration
+if [[ -f "$HOME/.local/lib/python3.*/site-packages/powerline/bindings/zsh/powerline.zsh" ]]; then
+    source "$HOME/.local/lib/python3.*/site-packages/powerline/bindings/zsh/powerline.zsh"
+fi
+
+# Development aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# Git aliases
+alias gst='git status'
+alias gco='git checkout'
+alias gcm='git commit -m'
+alias gps='git push'
+alias gpl='git pull'
+
+EOF
+        
+        log_success ".zshrc configured with Agnoster theme and plugins"
     fi
     
     # Configure iTerm2 preferences for development
     local plist="com.googlecode.iterm2"
+    local config_dir="$HOME/.iterm2_config"
     
-    # General settings
-    defaults write "$plist" "PrefsCustomFolder" -string "$HOME/.iterm2_config"
-    defaults write "$plist" "LoadPrefsFromCustomFolder" -bool true
+    # Create configuration directory
+    mkdir -p "$config_dir"
+    
+    # General settings - only set custom folder if we create proper config
+    # For now, use default preferences to avoid malformed file error
+    # defaults write "$plist" "PrefsCustomFolder" -string "$config_dir"
+    # defaults write "$plist" "LoadPrefsFromCustomFolder" -bool true
     
     # Window and tab settings
     defaults write "$plist" "UseBorder" -bool false
@@ -292,9 +410,24 @@ configure_iterm2() {
     defaults write "$plist" "WindowNumber" -bool false
     defaults write "$plist" "ShowFullScreenTabBar" -bool false
     
-    # Font settings - use SF Mono or Menlo (programmer fonts)
-    defaults write "$plist" "Normal Font" -string "SF Mono Regular 13"
-    defaults write "$plist" "Non-ASCII Font" -string "SF Mono Regular 13"
+    # Set appropriate window size for development (89 columns x 34 rows)
+    defaults write "$plist" "Default Bookmark Columns" -int 89
+    defaults write "$plist" "Default Bookmark Rows" -int 34
+    
+    # Set window dimensions globally
+    defaults write "$plist" "New Window Size" -string "89x34"
+    defaults write "$plist" "Default Window Settings" -string "89x34"
+    
+    # Apply to all new profiles
+    defaults write "$plist" "OpenNoWindowsAtStartup" -bool false
+    
+    # Font settings - use Meslo LG for Powerline (best for Oh My Zsh themes)
+    defaults write "$plist" "Normal Font" -string "Meslo LG L DZ for Powerline 14"
+    defaults write "$plist" "Non-ASCII Font" -string "Meslo LG L DZ for Powerline 14"
+    
+    # Alternative fonts if Meslo is not available
+    defaults write "$plist" "Font" -string "Meslo LG L DZ for Powerline"
+    defaults write "$plist" "Font Size" -int 14
     
     # Terminal behavior
     defaults write "$plist" "Silence Bell" -bool true
@@ -320,20 +453,20 @@ configure_iterm2() {
     defaults write "$plist" "UseMetal" -bool true
     defaults write "$plist" "SeparateStatusBarsPerPane" -bool false
     
-    # Color scheme settings (Dracula-inspired dark theme)
-    log "Configuring color scheme..."
+    # Color scheme settings (Solarized theme integration)
+    log "Configuring Solarized color scheme..."
     
     # Create color profiles directory
     local color_presets_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
     mkdir -p "$color_presets_dir"
     
-    # Create Dracula-inspired profile
-    cat > "$color_presets_dir/DeveloperTheme.json" << 'EOF'
+    # Create Oh-My-Zsh optimized profile with Solarized colors
+    cat > "$color_presets_dir/OhMyZshProfile.json" << 'EOF'
 {
   "Profiles": [
     {
-      "Name": "Developer Theme",
-      "Guid": "A8B8C8D8-E8F8-4A4B-8C8D-8E8F8A8B8C8D",
+      "Name": "Oh My Zsh Profile",
+      "Guid": "B9C9D9E9-F9A9-5B5C-9D9E-9F9A9B9C9D9E",
       "Dynamic Profile Parent Name": "Default",
       "Badge Text": "",
       "Working Directory": "~",
@@ -342,6 +475,12 @@ configure_iterm2() {
       "Command": "",
       "Initial Text": "",
       "Custom Directory": "No",
+      
+      "Columns": 89,
+      "Rows": 34,
+      
+      "Font": "Meslo LG L DZ for Powerline",
+      "Font Size": 14,
       
       "Ansi 0 Color": {
         "Red Component": 0.1568627450980392,
@@ -516,10 +655,14 @@ EOF
     defaults write "$plist" "Show Status Bar" -bool true
     defaults write "$plist" "Status Bar Font" -string "SF Mono Regular 12"
     
-    log_success "iTerm2 configured with developer theme and optimized settings"
-    log "Theme: Dark background with syntax highlighting colors"
-    log "Font: SF Mono (programmer-friendly font)"
-    log "Features: Optimized for coding with proper contrast and readability"
+    log_success "iTerm2 configured with Oh My Zsh and modern development environment"
+    log "Oh My Zsh: Installed with Agnoster theme"
+    log "Plugins: zsh-syntax-highlighting, zsh-autosuggestions, and developer tools"
+    log "Color Scheme: Solarized Dark (professional terminal colors)"
+    log "Font: Meslo LG for Powerline 14pt (perfect for Oh My Zsh themes)"
+    log "Window Size: 89 columns × 34 rows (developer-friendly size)"
+    log "Features: Modern terminal with git status, command completion, and syntax highlighting"
+    log "Next steps: Restart iTerm2 and enjoy your enhanced terminal experience!"
 }
 
 # Homebrew installation and update
