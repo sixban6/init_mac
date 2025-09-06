@@ -57,6 +57,10 @@ is_app_installed() {
 }
 
 version_ge() {
+    # Handle unknown versions
+    if [[ "$1" == "unknown" ]] || [[ "$2" == "unknown" ]]; then
+        return 1  # Force update if either version is unknown
+    fi
     printf '%s\n%s\n' "$2" "$1" | sort -V -C
 }
 
@@ -511,9 +515,9 @@ install_java() {
     
     if command_exists java; then
         local current_version
-        current_version=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1-2)
+        current_version=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1-2 2>/dev/null || echo "unknown")
         local latest_version
-        latest_version=$(brew info openjdk 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 | cut -d'.' -f1-2 || echo "unknown")
+        latest_version=$(brew info openjdk 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 | cut -d'.' -f1-2 2>/dev/null || echo "unknown")
         
         if version_ge "$current_version" "$latest_version"; then
             log_success "OpenJDK is up to date (version: $current_version)"
@@ -868,7 +872,7 @@ main() {
     log "• Git: $(command_exists git && echo "✓ Installed ($(git --version | cut -d' ' -f3))" || echo "✗ Not installed")"
     log "• Go: $(command_exists go && echo "✓ Installed ($(go version | cut -d' ' -f3))" || echo "✗ Not installed")"
     log "• Python: $(command_exists python3 && echo "✓ Installed ($(python3 --version))" || echo "✗ Not installed")"
-    log "• Java: $(command_exists java && echo "✓ Installed ($(java -version 2>&1 | head -1 | cut -d'"' -f2))" || echo "✗ Not installed")"
+    log "• Java: $(command_exists java && echo "✓ Installed ($(java -version 2>&1 | head -1 | cut -d'"' -f2 2>/dev/null || echo "unknown"))" || echo "✗ Not installed")"
     log "• Rust: $(command_exists rustc && echo "✓ Installed ($(rustc --version | cut -d' ' -f2))" || echo "✗ Not installed")"
     log "• Node.js: $(command_exists node && echo "✓ Installed ($(node --version))" || echo "✗ Not installed")"
     log "• sing-box: $(command_exists sing-box && echo "✓ Installed" || echo "✗ Not installed")"
