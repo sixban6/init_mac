@@ -765,17 +765,28 @@ EOF
 install_java() {
     log "Checking OpenJDK installation..."
     
-    if command_exists java; then
-        local current_version
-        current_version=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1-2 2>/dev/null || echo "unknown")
+    # Check if OpenJDK is installed via Homebrew first
+    if brew list openjdk &>/dev/null; then
+        local brew_version
+        brew_version=$(brew list --versions openjdk 2>/dev/null | head -1 | grep -o '[0-9.]*' | head -1)
         local latest_version
-        latest_version=$(brew info openjdk 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 | cut -d'.' -f1-2 2>/dev/null || echo "unknown")
+        latest_version=$(brew info openjdk 2>/dev/null | head -1 | grep -o 'stable [0-9.]*' | cut -d' ' -f2 2>/dev/null || echo "unknown")
         
-        if version_ge "$current_version" "$latest_version"; then
-            log_success "OpenJDK is up to date (version: $current_version)"
+        if version_ge "$brew_version" "$latest_version"; then
+            log_success "OpenJDK is up to date (version: $brew_version)"
+            configure_java_environment
             return 0
         else
-            log_warning "OpenJDK version $current_version is outdated, updating to $latest_version"
+            log_warning "OpenJDK version $brew_version is outdated, updating to $latest_version"
+        fi
+    elif command_exists java; then
+        # Java exists but not from Homebrew - check version
+        local current_version
+        current_version=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1-2 2>/dev/null || echo "unknown")
+        if [[ "$current_version" != "unknown" ]]; then
+            log_warning "Found system Java version $current_version, installing Homebrew OpenJDK for better management"
+        else
+            log_warning "Found Java installation but version detection failed, installing Homebrew OpenJDK"
         fi
     fi
     
@@ -784,7 +795,13 @@ install_java() {
     # Install OpenJDK from Homebrew main repository
     brew install openjdk
     
-    # Configure Java environment
+    configure_java_environment
+    
+    log_success "OpenJDK installed and configured successfully"
+}
+
+# Configure Java environment
+configure_java_environment() {
     local shell_profile=""
     case "$SHELL" in
         */zsh) shell_profile="$HOME/.zshrc" ;;
@@ -815,8 +832,6 @@ EOF
         export JAVA_HOME="$java_home"
         export PATH="$JAVA_HOME/bin:$PATH"
     fi
-    
-    log_success "OpenJDK installed and configured successfully"
 }
 
 # Rust installation and configuration
