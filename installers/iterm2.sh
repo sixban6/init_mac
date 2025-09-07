@@ -133,11 +133,13 @@ alias fgrep='fgrep --color=auto'
 alias egrep='egrep --color=auto'
 
 # Git aliases
+alias gaa='git add .'
 alias gst='git status'
 alias gco='git checkout'
 alias gcm='git commit -m'
 alias gps='git push'
 alias gpl='git pull'
+alias gpp="gpl && gaa && gcm 'm' && gps"
 EOF
         fi
         
