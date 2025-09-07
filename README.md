@@ -24,7 +24,8 @@
 ### 1. 完整安装（推荐）
 ```bash
 # 安装所有组件
-curl -fsSL https://raw.githubusercontent.com/sixban6/init_mac/main/setup_mac.sh -o setup_mac.sh
+git clone https://github.com/sixban6/init_mac.git
+cd init_mac
 chmod +x setup_mac.sh
 ./setup_mac.sh --all
 ```
