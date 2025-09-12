@@ -78,7 +78,7 @@
     "Blue Component" : 0.37647058823529411
   },
   "Mouse Reporting" : true,
-  "Scroll wheel sends arrow keys when in alternate screen mode" : true,
+  "Scroll Wheel Sends Arrow Keys In Alternate Screen Mode" : true,
   "Columns" : 80,
   "Idle Code" : 0,
   "Ansi 13 Color" : {

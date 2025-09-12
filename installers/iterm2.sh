@@ -186,6 +186,9 @@ configure_iterm2_preferences() {
     defaults write "$plist" "TabsHaveCloseButton" -bool true
     defaults write "$plist" "UseMetal" -bool true
     
+    # Mouse and scrolling settings
+    defaults write "$plist" "ScrollWheelSendsArrowKeysInAlternateScreenMode" -bool true
+    
     log_success "Developer theme configured as default iTerm2 profile"
 }
 
