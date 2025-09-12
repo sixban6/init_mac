@@ -70,7 +70,6 @@
   "BM Growl" : false,
   "Command" : "",
   "Description" : "Default",
-  "Dynamic Profile Filename" : "\/Users\/sweetcs\/Library\/Application Support\/iTerm2\/DynamicProfiles\/DeveloperTheme.json",
   "Cursor Blink" : true,
   "Screen" : -1,
   "Selection Color" : {
@@ -79,6 +78,7 @@
     "Blue Component" : 0.37647058823529411
   },
   "Mouse Reporting" : true,
+  "Scroll wheel sends arrow keys when in alternate screen mode" : true,
   "Columns" : 80,
   "Idle Code" : 0,
   "Ansi 13 Color" : {
