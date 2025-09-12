@@ -37,7 +37,7 @@ install_iterm2() {
 }
 
 configure_iterm2() {
-    log "Configuring iTerm2 with Oh My Zsh and modern development theme..."
+    log "Configuring iTerm2 with Developer.json theme and Oh My Zsh..."
     
     # Clean up any previous malformed configuration
     defaults delete com.googlecode.iterm2 "PrefsCustomFolder" 2>/dev/null || true
@@ -94,12 +94,12 @@ configure_iterm2() {
     # Configure Oh My Zsh theme based on font availability
     configure_oh_my_zsh_theme
     
-    log_success "iTerm2 configured with Oh My Zsh and modern development environment"
+    log_success "iTerm2 configured with Developer theme and Oh My Zsh environment"
+    log "iTerm2: Developer.json theme applied (custom color scheme, fonts, and settings)"
     log "Oh My Zsh: Installed with bureau theme (professional developer theme)"
-    log "Theme Features: Detailed git status, time display, clean layout, works with any font"
+    log "Theme Features: Custom color scheme, optimized fonts, detailed git status, clean layout"
     log "Plugins: zsh-syntax-highlighting, zsh-autosuggestions, and developer tools"
-    log "Font: System fonts work perfectly with bureau theme"
-    log "Next steps: Restart iTerm2 and enjoy your enhanced terminal experience!"
+    log "Next steps: Restart iTerm2 and enjoy your enhanced developer terminal experience!"
 }
 
 configure_zshrc() {
@@ -148,53 +148,37 @@ EOF
 }
 
 configure_iterm2_preferences() {
-    log "Configuring iTerm2 preferences for development..."
+    log "Configuring iTerm2 with Developer.json theme..."
     local plist="com.googlecode.iterm2"
+    local dynamic_profiles_dir="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
+    local developer_profile="$dynamic_profiles_dir/Developer.json"
     
-    # Window and tab settings
+    # Create DynamicProfiles directory if it doesn't exist
+    mkdir -p "$dynamic_profiles_dir"
+    
+    # Copy Developer.json to DynamicProfiles directory
+    if [[ -f "$SCRIPT_DIR/Developer.json" ]]; then
+        cp "$SCRIPT_DIR/Developer.json" "$developer_profile"
+        log_success "Developer theme profile installed"
+    else
+        log_error "Developer.json not found in $SCRIPT_DIR"
+        return 1
+    fi
+    
+    # Set iTerm2 to load preferences from custom folder
+    defaults write "$plist" "LoadPrefsFromCustomFolder" -bool true
+    defaults write "$plist" "PrefsCustomFolder" -string "$dynamic_profiles_dir"
+    
+    # Set Developer Theme as default profile
+    defaults write "$plist" "Default Bookmark Guid" -string "B79270E5-058B-48B7-B9A1-814E0FE0DBFF"
+    
+    # Additional window and performance settings
     defaults write "$plist" "UseBorder" -bool false
     defaults write "$plist" "HideTab" -bool false
     defaults write "$plist" "TabsHaveCloseButton" -bool true
-    defaults write "$plist" "WindowNumber" -bool false
-    defaults write "$plist" "ShowFullScreenTabBar" -bool false
-    
-    # Set appropriate window size for development (120 columns x 40 rows)
-    defaults write "$plist" "Default Bookmark Columns" -int 120
-    defaults write "$plist" "Default Bookmark Rows" -int 40
-    
-    # Font settings - use system fonts (works with any font)
-    if ls "$HOME/Library/Fonts/"*Meslo*Nerd* >/dev/null 2>&1; then
-        log_success "Nerd Font detected, configuring iTerm2 to use MesloLGS Nerd Font"
-        defaults write "$plist" "Normal Font" -string "MesloLGS-NF-Regular 14"
-        defaults write "$plist" "Non-ASCII Font" -string "MesloLGS-NF-Regular 14"
-        defaults write "$plist" "Font" -string "MesloLGS Nerd Font"
-        defaults write "$plist" "Font Size" -int 14
-    else
-        log "Using system default font"
-        defaults write "$plist" "Normal Font" -string "SF Mono Regular 14"
-        defaults write "$plist" "Non-ASCII Font" -string "SF Mono Regular 14"
-        defaults write "$plist" "Font" -string "SF Mono"
-        defaults write "$plist" "Font Size" -int 14
-    fi
-    
-    # Terminal behavior
-    defaults write "$plist" "Silence Bell" -bool true
-    defaults write "$plist" "FlashingBell" -bool false
-    defaults write "$plist" "VisualBell" -bool false
-    defaults write "$plist" "BellAlert" -bool false
-    
-    # Cursor settings
-    defaults write "$plist" "CursorBlink" -bool true
-    defaults write "$plist" "CursorType" -int 2  # Underline cursor
-    
-    # Scrollback settings
-    defaults write "$plist" "Scrollback Lines" -int 10000
-    defaults write "$plist" "Unlimited Scrollback" -bool false
-    
-    # Performance settings
     defaults write "$plist" "UseMetal" -bool true
     
-    log_success "iTerm2 preferences configured for development"
+    log_success "Developer theme configured as default iTerm2 profile"
 }
 
 # Configure Oh My Zsh theme based on available fonts
