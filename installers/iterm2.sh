@@ -156,6 +156,14 @@ configure_iterm2_preferences() {
     # Create DynamicProfiles directory if it doesn't exist
     mkdir -p "$dynamic_profiles_dir"
     
+    # Clean up any existing conflicting profiles to avoid GUID conflicts
+    log "Cleaning up existing dynamic profiles to avoid conflicts..."
+    rm -f "$dynamic_profiles_dir"/DeveloperTheme.json
+    rm -f "$dynamic_profiles_dir"/NerdFontFixed.plist
+    rm -f "$dynamic_profiles_dir"/NerdFontProfile.plist
+    rm -f "$dynamic_profiles_dir"/OhMyZshProfile.json
+    log_success "Conflicting profiles cleaned up"
+    
     # Copy Developer.json to DynamicProfiles directory
     if [[ -f "$SCRIPT_DIR/Developer.json" ]]; then
         cp "$SCRIPT_DIR/Developer.json" "$developer_profile"
