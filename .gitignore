@@ -6,6 +6,7 @@ test_config.json
 /singgen
 !/pkg/singgen/
 !/cmd/singgen/
+macOS_setup*
 .idea
 *.exe
 *.exe~

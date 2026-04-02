@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Modular macOS Development Environment Setup Script
-# Features: iTerm2, Homebrew, Git, Go, Python, Java (OpenJDK), Rust, Node.js, sing-box, VS Code
+# Features: WezTerm, Homebrew, Git, Go, Python, Java (OpenJDK), Rust, Node.js, sing-box, VS Code
 # Each component is installed via separate, customizable scripts
 
 set -euo pipefail
@@ -17,7 +17,7 @@ source "$INSTALLERS_DIR/utils.sh"
 declare -a AVAILABLE_INSTALLERS=(
     "homebrew"
     "git"
-    "iterm2"
+    "wezterm"
     "go"
     "python"
     "java"
@@ -47,7 +47,7 @@ $(printf "    %s\n" "${AVAILABLE_INSTALLERS[@]}")
 Examples:
     $0                          # Install all components
     $0 --all                    # Install all components
-    $0 homebrew git iterm2      # Install only specified components
+    $0 homebrew git wezterm     # Install only specified components
     $0 --selective              # Choose components interactively
     $0 --list                   # List available components
 
