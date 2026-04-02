@@ -64,6 +64,22 @@ config.keys = {
   -- 快速切换标签 (Cmd+1, 2, 3...)
   { key = '1', mods = 'CMD', action = wezterm.action.ActivateTab(0) },
   { key = '2', mods = 'CMD', action = wezterm.action.ActivateTab(1) },
+  --  给重命名标签页绑定快捷键：Cmd + Shift + E (Edit)
+    {
+      key = 'E',
+      mods = 'CMD|SHIFT',
+      action = wezterm.action.PromptInputLine {
+        description = '请输入新的标签名称:',
+        action = wezterm.action_callback(function(window, pane, line)
+          -- 如果用户输入了内容并按回车，就设置标题
+          if line then
+            window:active_tab():set_title(line)
+          end
+        end),
+      },
+    },
+    -- 关闭当前标签页 (保持和 Mac 一致)
+    { key = 'w', mods = 'CMD', action = wezterm.action.CloseCurrentTab { confirm = true } },
 }
 
 
