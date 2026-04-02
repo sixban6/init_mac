@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Modular macOS Development Environment Setup Script
-# Features: WezTerm, Homebrew, Git, Go, Python, Java (OpenJDK), Rust, Node.js, sing-box, VS Code
+# Features: WezTerm, Homebrew, Git, Brave Browser, Obsidian, Tailscale, Telegram, IINA, Go, Python, Java (OpenJDK), Rust, Node.js, sing-box, VS Code
 # Each component is installed via separate, customizable scripts
 
 set -euo pipefail
@@ -18,6 +18,13 @@ declare -a AVAILABLE_INSTALLERS=(
     "homebrew"
     "git"
     "wezterm"
+    "pearcleaner"
+    "sec"
+    "brave-browser"
+    "obsidian"
+    "tailscale"
+    "telegram"
+    "iina"
     "go"
     "python"
     "java"
@@ -47,7 +54,7 @@ $(printf "    %s\n" "${AVAILABLE_INSTALLERS[@]}")
 Examples:
     $0                          # Install all components
     $0 --all                    # Install all components
-    $0 homebrew git wezterm     # Install only specified components
+    $0 homebrew git wezterm brave-browser obsidian  # Install only specified components
     $0 --selective              # Choose components interactively
     $0 --list                   # List available components
 
